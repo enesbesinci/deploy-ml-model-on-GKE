@@ -372,8 +372,7 @@ Thanks for reading.
 
 ## Sources:
 
-[1]: [Flask-Irıs-Classification-App](https://github.com/erkansirin78/flask-iris-classification)
-
+* [1] [Flask-Irıs-Classification-App](https://github.com/erkansirin78/flask-iris-classification)
 
 
 
