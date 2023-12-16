@@ -197,7 +197,7 @@ Let's see it in more detail.
 
 ![cluster_detay](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/26fafb2f-de52-4bd1-b25b-13a6b367ceb4)
 
-Yes, we have create a cluster, now we can connect to the cluster, to connect to cluster, get a credential.
+Yes, we have created a cluster, now we can connect to the cluster, to connect to cluster, get a credential.
 
 ![cluster_credential](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/74fb0cdb-401f-4e68-b89d-b86341e515a1)
 
@@ -208,6 +208,187 @@ Now that we can run kubectl commands on Gcloud, let's see our nodes.
 ![kubectl _Getnodes](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/1c759df0-2b7c-41a7-93f2-ed2b91fe3eda)
 
 For now, we don't have any node because we created an autopilot cluster and we haven't deployed any application so we haven't been allocated a node.
+
+Now we have 2 different options to deploy the machine learning model on kubernetes. 1-) We can prepare a YAML file or 2-) we can deploy our model with kubectl commands. In this project, I will deploy with YAML file as it is more common in real life use cases and is a best practice.
+
+As you remember, we have already turned our model into a container and sent it to be stored in the Artifact Registry. If you want to run an application as an imperative configuration on your Kubernets cluster, you will need to keep the model you created in Artifact Registry. But if you want to run an application with a YAML file, you can pull and run your application through an open DockerHub repo as I will explain in the YAML file shortly.
+
+Now, we will first create a Deployment Object.
+
+For more information about Kubernetes Objects: https://kubernetes.io/docs/home/
+
+![Screenshot 2023-12-16 125243](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/12778df6-c862-4d66-811a-e3bf6806ab82)
+
+Let's explain this YAML file.
+
+**apiVersion: apps/v1:**
+
+This line specifies the Kubernetes API version used. In this particular YAML file, version "apps/v1" is used, which means that application level objects like Deployment are used.
+
+**kind: Deployment:**
+
+This line specifies the type of object defined in the YAML file. In this case, a Deployment object is defined.
+
+**metadata:**
+
+This section contains the meta information of the object. For example, the name (`name`) of the object is set to "flask-iris-deployment".
+
+**spec:**
+
+This section specifies the properties of the Deployment object. It contains two main subsections:
+
+**replicas: 5:**
+
+Specifies the number of pods to deploy. In this example, 5 replicas will be used.
+
+**selector and template:**
+
+These sections define how to select and configure the pods that Deployment manages. It selects a specific group of pods using a selector based on tags. The pod configuration consists of a template that defines the containers contained in it and other properties.
+
+**containers:**
+
+This section specifies the containers to run inside the pod. In this example, a container named "flask-iris-model" is defined.
+
+**image: erkansirin78/flask-iris-classification:2021-3:**
+
+The Docker image is named and labeled. This image contains the Flask-based Iris classification model.
+
+**ports:**
+
+Specifies which port the container will listen on. In this example, port 8080 is used.
+
+**resources:**
+
+Specifies the container's resource requests and limits. Demands and limits are set for memory and CPU resources.
+
+Now that we have created our Deployment object, we can run our application, you can use this YAML file by uploading it to Gcloud from a GitHub repo or from your local computer.
+
+Now let's create a deployment with the command "kubectl apply -f flask-iris-deployment.yaml- and use -kubectl get all- to see all our resources on kubernetes and their current status.
+
+![Screenshot 2023-12-15 162312](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/0e61aa4c-f05b-499f-a24d-2307097cef4b)
+
+As you can see, we have created a deployment and depending on this deployment we have a ReplicaSet and depending on this ReplicaSet we have 5 pods. But the pods are still being created.
+
+After a few minutes...
+
+Let's see if our pods are working with the -Kubectl get pods- command.
+
+![Screenshot 2023-12-15 162456](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/d16a5a69-96e0-4380-9a44-c3ff30c16874)
+
+As you can see, they are in -running- state.
+
+![Screenshot 2023-12-15 162540](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/694999ae-aa29-47e7-8082-31c7ff518dc2)
+
+Let's see our nodes. Now that we have running applications, Autopilot cluster automatically gave us 2 machines.
+
+![Screenshot 2023-12-15 162540](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/e73c08ca-81da-4657-85aa-c8d91ae3659f)
+
+Our applications are running but we need to create a Service object to access them.
+
+Let's write a Service YAML.
+
+![image](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/2caeed73-72d2-419e-98c6-76a8e5fe9b6a)
+
+**apiVersion: v1:**
+
+This line specifies the Kubernetes API version used. In this particular YAML file, version "v1" is used, which represents the older version of Service, a base Kubernetes object.
+
+**kind: Service:**
+
+This line specifies the type of the object defined in the YAML file. In this case, a Service object is defined.
+
+**metadata:**
+
+This section contains the meta information of the object. For example, the name of the service is "flask-iris-service".
+
+**spec:**
+
+This section specifies the properties of the Service object. It contains two main subsections:
+
+**type: LoadBalancer:**
+
+Specifies the type of the service. In this case, a LoadBalancer type that can be accessed with external IPs is used.
+
+**selector:**
+
+This section is used to select the pods that this service will route to. In this example, a specific group of pods is selected using a tag-based selector. The tag is app: flask-iris-model.
+
+**ports:**
+
+This section specifies which ports the service will listen on and which pods it will redirect these ports to.
+protocol:
+
+**TCP:**
+
+Specifies the communication protocol used (TCP).
+
+**port: 80:**
+
+Specifies the port the service will access from the outside world.
+
+**targetPort: 8080:**
+
+Specifies the port to be forwarded to the specified pods. This means that the application running inside the pods can be accessed through this port. In this example, the port on which the Flask application runs is 8080.
+
+Let's create our Service object with "kubectl apply -f flask-iris-service.yaml" command.
+
+![Screenshot 2023-12-15 162525](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/4f352a06-c8a6-4cfd-80d3-32799c056ce4)
+
+Let's see our services.
+
+![Screenshot 2023-12-15 162621](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/5a05acb8-4418-4772-8726-ef3e2bdecbcd)
+
+We can now access our application through the service we created called "flask-iris-service", for this we need to go to the External-Ip address on the side. 
+
+![Screenshot 2023-12-15 162711](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/8a4bbe78-cb4b-4f13-98b7-6896a1a4ce6c)
+
+
+![Screenshot 2023-12-15 162722](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/3758ab44-1927-4f23-a1ac-6debe24eb3c0)
+
+Now let's double the number of pods and see how our nodes change.
+
+![Screenshot 2023-12-15 163539](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/bb358ea4-d019-400a-be32-3f44abfc6efb)
+
+![Screenshot 2023-12-15 163552](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/697880d7-38a6-4060-92c4-f3e34bad1f50)
+
+After a few minutes all our pods stood up, now let's see our nodes.
+
+![Screenshot 2023-12-15 163651](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/e3fc2ec7-4dd8-43d4-b48a-ca9c02b955e2)
+
+As you can see, since we are using Autopilot Cluster, when we scale our pods, the number of nodes automatically increases.
+
+Now we can delete all the resources (service and deployemnt) we created.
+
+![Screenshot 2023-12-15 163741](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/33506703-1487-41ac-9679-3eb48ff1f91b)
+
+Yes, in this article I showed you how to deploy a machine learning model on GKE, thank you for reading, I will be writing a more detailed article about Kubernetes and Docker in the future.
+
+Now if you are all done, you can delete your Google Cloud project.
+
+![Screenshot 2023-12-15 165058](https://github.com/enesbesinci/deploy-ml-model-on-GKE/assets/110482608/8a2cda94-5da2-45bb-ab4c-c81192f4bb6f)
+
+Thanks for reading. 
+
+
+## Sources:
+
+[1]: https://github.com/erkansirin78/flask-iris-classification
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
